@@ -8,15 +8,58 @@ namespace Microsoft.ML.AutoML.Samples
 {
     public static class MulticlassClassificationExperiment
     {
-        private static string TrainDataPath = "<Path to your train dataset goes here>";
-        private static string TestDataPath = "<Path to your test dataset goes here>";
-        private static string ModelPath = @"<Desired model output directory goes here>\OptDigitsModel.zip";
-        private static string LabelColumnName = "Number";
+        //private static string TrainDataPath = "C:\\Users\\Administrator\\Desktop\\MLNET\\machinelearning-samples\\datasets\\optdigits-train.csv";
+        //private static string TestDataPath = "C:\\Users\\Administrator\\Desktop\\MLNET\\machinelearning-samples\\datasets\\optdigits-train.csv";
+        //private static string ModelPath = @"<Desired model output directory goes here>\OptDigitsModel.zip";
+        private static string LabelColumnName = "Label";
         private static uint ExperimentTime = 60;
+
+        public class HotelData
+        {
+            [LoadColumn(0, 63)]
+            [VectorType(64)]
+            public float[] HotelValues;
+
+            [LoadColumn(64)]
+            public string Label;
+        }
 
         public static void Run()
         {
             MLContext mlContext = new MLContext();
+
+            //IDataView trainDataView = mlContext.Data.LoadFromTextFile<PixelData>(TrainDataPath, separatorChar: ',');
+            //IDataView testDataView = mlContext.Data.LoadFromTextFile<PixelData>(TestDataPath, separatorChar: ',');
+
+            var tmpPath = "C:\\Users\\Administrator\\Desktop\\MLNET\\HotelBookings.tsv";
+            IDataView trainDataView = mlContext.Data.LoadFromTextFile<HotelData>(
+                                         path: tmpPath,
+                                         hasHeader: true,
+                                         separatorChar: '\t',
+                                         allowQuoting: true,
+                                         allowSparse: false);
+            IDataView testDataView = mlContext.Data.BootstrapSample(trainDataView);
+
+
+
+            // STEP 2: Run AutoML experiment
+            Console.WriteLine($"Running AutoML Multiclass classification experiment for {ExperimentTime} seconds...");
+            ExperimentResult<MulticlassClassificationMetrics> experimentResult = mlContext.Auto()
+            .CreateMulticlassClassificationExperiment(ExperimentTime)
+            .Execute(trainDataView, LabelColumnName);
+
+            // STEP 3: Print metric from the best model
+            RunDetail<MulticlassClassificationMetrics> bestRun = experimentResult.BestRun;
+            Console.WriteLine($"Total models produced: {experimentResult.RunDetails.Count()}");
+            Console.WriteLine($"Best model's trainer: {bestRun.TrainerName}");
+            Console.WriteLine($"Metrics of best model from validation data --");
+
+            // STEP 4: Evaluate test data
+            IDataView testDataViewWithBestScore = bestRun.Model.Transform(testDataView);
+            var testMetrics = mlContext.MulticlassClassification.CrossValidate(testDataViewWithBestScore, bestRun.Estimator, numberOfFolds: 5, LabelColumnName);
+
+
+            /*MLContext mlContext = new MLContext();
 
             // STEP 1: Load data
             IDataView trainDataView = mlContext.Data.LoadFromTextFile<PixelData>(TrainDataPath, separatorChar: ',');
@@ -38,6 +81,7 @@ namespace Microsoft.ML.AutoML.Samples
             // STEP 4: Evaluate test data
             IDataView testDataViewWithBestScore = bestRun.Model.Transform(testDataView);
             MulticlassClassificationMetrics testMetrics = mlContext.MulticlassClassification.Evaluate(testDataViewWithBestScore, labelColumnName: LabelColumnName);
+            //MulticlassClassificationMetrics testMetrics = mlContext.MulticlassClassification.CrossValidate(testDataViewWithBestScore, bestRun.Estimator, numberOfFolds: 5, labelColumnName: "reservation_status");
             Console.WriteLine($"Metrics of best model on test data --");
             PrintMetrics(testMetrics);
 
@@ -57,9 +101,9 @@ namespace Microsoft.ML.AutoML.Samples
             Console.WriteLine($"Predicted number for test pixels: {prediction.Prediction}");
 
             Console.WriteLine("Press any key to continue...");
-            Console.ReadKey();
+            Console.ReadKey();*/
         }
-        
+
         private static void PrintMetrics(MulticlassClassificationMetrics metrics)
         {
             Console.WriteLine($"LogLoss: {metrics.LogLoss}");
