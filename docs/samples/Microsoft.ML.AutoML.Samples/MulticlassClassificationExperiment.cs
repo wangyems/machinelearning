@@ -32,12 +32,12 @@ namespace Microsoft.ML.AutoML.Samples
             //IDataView testDataView = mlContext.Data.LoadFromTextFile<PixelData>(TestDataPath, separatorChar: ',');
 
             var tmpPath = "C:\\Users\\Administrator\\Desktop\\MLNET\\HotelBookings.tsv";
-            IDataView trainDataView = mlContext.Data.LoadFromTextFile<HotelData>(
-                                         path: tmpPath,
-                                         hasHeader: true,
+            IDataView trainDataView = mlContext.Data.LoadFromTextFile(
+                                         path: tmpPath
+                                         /*hasHeader: true,
                                          separatorChar: '\t',
                                          allowQuoting: true,
-                                         allowSparse: false);
+                                         allowSparse: false*/);
             IDataView testDataView = mlContext.Data.BootstrapSample(trainDataView);
 
 

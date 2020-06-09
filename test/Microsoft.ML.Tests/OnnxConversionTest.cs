@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Google.Protobuf;
+using Microsoft.ML.AutoML;
 using Microsoft.ML.Data;
 using Microsoft.ML.EntryPoints;
 using Microsoft.ML.Model.OnnxConverter;
@@ -2074,6 +2075,37 @@ namespace Microsoft.ML.Tests
                 fileText = Regex.Replace(fileText, "\"producerVersion\": \".*\"", "\"producerVersion\": \"##VERSION##\"");
                 File.WriteAllText(textFormatPath, fileText);
             }
+        }
+
+        [Fact]
+        public void IssueTest()
+        {
+            string labelColumnName = "Label";
+            MLContext mlContext = new MLContext();
+
+            var tmpPath = "C:\\Users\\Administrator\\Desktop\\MLNET\\HotelBookings1.tsv";
+            IDataView trainDataView = mlContext.Data.LoadFromTextFile(
+                                         path: tmpPath
+                                         /*hasHeader: true,
+                                         separatorChar: '\t',
+                                         allowQuoting: true,
+                                         allowSparse: false*/);
+            IDataView testDataView = mlContext.Data.BootstrapSample(trainDataView);
+
+
+
+            // STEP 2: Run AutoML experiment
+            ExperimentResult<MulticlassClassificationMetrics> experimentResult = mlContext.Auto()
+            .CreateMulticlassClassificationExperiment(60)
+            .Execute(trainDataView, labelColumnName);
+
+            // STEP 3: Print metric from the best model
+            RunDetail<MulticlassClassificationMetrics> bestRun = experimentResult.BestRun;
+
+            // STEP 4: Evaluate test data
+            IDataView testDataViewWithBestScore = bestRun.Model.Transform(testDataView);
+            var testMetrics = mlContext.MulticlassClassification.CrossValidate(testDataViewWithBestScore, bestRun.Estimator, numberOfFolds: 5, labelColumnName);
+            Done();
         }
     }
 }
